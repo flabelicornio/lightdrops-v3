@@ -19654,5 +19654,103 @@
     "zscore": -0.525205891513981,
     "spread": -0.525205891513981,
     "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:22:52.956Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -0.5728112718171493,
+    "spread": -0.5728112718171493,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:22:52.956Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.4930788039625775,
+    "spread": -0.4930788039625775,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:23:57.992Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -0.7106480871059522,
+    "spread": -0.7106480871059522,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:23:57.992Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.48268514558422415,
+    "spread": -0.48268514558422415,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:25:03.152Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -1.365697752688713,
+    "spread": -1.365697752688713,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:25:03.152Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.4440226535026566,
+    "spread": -0.4440226535026566,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:26:08.024Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -0.9425162183316306,
+    "spread": -0.9425162183316306,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:26:08.024Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.42132764922418786,
+    "spread": -0.42132764922418786,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:27:13.028Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -0.7672427948661132,
+    "spread": -0.7672427948661132,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:27:13.028Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.4238294943369296,
+    "spread": -0.4238294943369296,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:28:18.033Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -0.8580880529521108,
+    "spread": -0.8580880529521108,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:28:18.033Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.38235882152081907,
+    "spread": -0.38235882152081907,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:29:23.030Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": -0.890432919134792,
+    "spread": -0.890432919134792,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T15:29:23.030Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": -0.36999921804490293,
+    "spread": -0.36999921804490293,
+    "signal": ""
   }
 ]
