@@ -16,8 +16,8 @@ class Triangle {
         // Estado actual
         this.spread = null;
         this.zscore = 0;
-        this.signal = null;      // null | 'LONG_A' | 'LONG_B' | 'LONG_C' | 'SHORT_A' etc.
-        this.strength = 0;       // 0-100 fuerza de la señal
+        this.signal = null;
+        this.strength = 0;
         this.active = true;
 
         // Métricas de performance
@@ -27,18 +27,18 @@ class Triangle {
 
     // --------------------------------------------
     // CALCULAR SPREAD TRIANGULAR
-    // Mide la desviación del equilibrio entre los 3 activos
-    // Principio: si A, B, C están correctamente valorados entre sí,
-    // el ratio A*C / B debe ser constante. Cuando se desvía → oportunidad.
+    // Usa log-ratio para capturar desalineación real
+    // entre los 3 activos. La fórmula anterior
+    // (r_ab * r_bc) / r_ac era una identidad = 1 siempre.
+    // Log-space: logA - 2*logB + logC mide la curvatura
+    // del triángulo — 0 = equilibrio, ≠0 = oportunidad.
     // --------------------------------------------
     calcTriangleSpread(priceA, priceB, priceC) {
         if (!priceA || !priceB || !priceC) return null;
-        // Ratio normalizado: relación cruzada de los tres
-        const r_ab = priceB / priceA;
-        const r_bc = priceC / priceB;
-        const r_ac = priceC / priceA;
-        // El spread es qué tan lejos está el triángulo de cerrarse
-        return (r_ab * r_bc) / r_ac;
+        const logA = Math.log(priceA);
+        const logB = Math.log(priceB);
+        const logC = Math.log(priceC);
+        return logA - 2 * logB + logC;
     }
 
     calcZScore(value, history) {
@@ -57,7 +57,6 @@ class Triangle {
     async tick(threshold = 1.5) {
         this.cycleCount++;
 
-        // Actualizar los 3 agentes en paralelo
         const results = await Promise.all(this.agents.map(a => a.tick()));
         if (results.some(r => !r)) {
             console.warn(`  [${this.id}] Datos incompletos en algún agente`);
@@ -66,9 +65,8 @@ class Triangle {
 
         const [snapA, snapB, snapC] = this.agents.map(a => a.snapshot());
 
-        // Calcular spread triangular
         const spread = this.calcTriangleSpread(snapA.price, snapB.price, snapC.price);
-        if (!spread) return null;
+        if (spread === null) return null;
 
         this.spread = spread;
         this.spreadHistory.push(spread);
@@ -76,10 +74,8 @@ class Triangle {
             this.spreadHistory.shift();
         }
 
-        // Z-score del spread actual vs historia
         this.zscore = this.calcZScore(spread, this.spreadHistory);
 
-        // Determinar señal
         this.signal = null;
         this.strength = 0;
 
@@ -88,9 +84,6 @@ class Triangle {
         if (absZ >= threshold) {
             this.totalSignals++;
 
-            // Identificar cuál activo está desalineado
-            // z > 0: B sobrevaluado vs A y C → SHORT B, LONG A y C
-            // z < 0: B subvaluado vs A y C  → LONG B, SHORT A y C
             if (this.zscore > 0) {
                 this.signal = {
                     type: 'LONG_AC_SHORT_B',
@@ -109,7 +102,6 @@ class Triangle {
                 };
             }
 
-            // Fuerza = combinación de z-score + confianza media de los agentes
             const avgConf = (snapA.confidence + snapB.confidence + snapC.confidence) / 3;
             this.strength = Math.min(100, Math.round(
                 (Math.min(absZ, 3) / 3) * 60 + (avgConf / 100) * 40

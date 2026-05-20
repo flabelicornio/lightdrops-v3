@@ -61,6 +61,7 @@ class Arbitrer {
             }
         }
 
+        this.closePositionsIfConverged(reports);
         // Seleccionar la señal más fuerte entre todos los núcleos
         const best = reports
             .filter(r => r.signal !== null)
@@ -91,6 +92,11 @@ class Arbitrer {
         const { signal, agents } = report;
         const capitalPerLeg = this.portfolio.cash * 0.3; // 30% por posición
 
+        const openInNucleus = this.portfolio.positions.filter(p => p.status === 'open' && report.agents?.some(a => a.id === p.agentId)).length;
+        if (openInNucleus > 0) {
+            console.log('  ⏸ Ya hay posiciones abiertas en este núcleo — esperando cierre');
+            return;
+        }
         if (capitalPerLeg < 1) {
             console.log('  ⚠ Capital insuficiente para abrir posición');
             return;

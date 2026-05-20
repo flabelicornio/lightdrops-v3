@@ -254,7 +254,7 @@ class StateManager {
 
         // Restaurar portfolio
         if (state.portfolio && arbitrer.portfolio) {
-            arbitrer.portfolio.cash        = state.portfolio.cash        ?? arbitrer.portfolio.cash;
+            // cash no se restaura — siempre arranca desde CAPITAL_TOTAL en .env
             arbitrer.portfolio.pnl         = state.portfolio.pnl         ?? 0;
             arbitrer.portfolio.totalTrades = state.portfolio.totalTrades ?? 0;
         }
