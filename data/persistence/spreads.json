@@ -12276,5 +12276,117 @@
     "zscore": 0,
     "spread": 0,
     "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:50:32.814Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:50:32.814Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:51:37.861Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:51:37.861Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:52:42.857Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:52:42.857Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:53:47.913Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:53:47.913Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:54:52.883Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:54:52.883Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:55:57.871Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:55:57.871Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:57:02.859Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:57:02.859Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:58:07.892Z",
+    "nucleus": "Macro  USO↔UUP↔SPY",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
+  },
+  {
+    "ts": "2026-05-20T05:58:07.892Z",
+    "nucleus": "Crypto BTC↔ETH↔QQQ",
+    "zscore": 0,
+    "spread": 0,
+    "signal": ""
   }
 ]
