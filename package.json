@@ -1,0 +1,17 @@
+{
+  "name": "lightdrops-v3",
+  "version": "3.0.0",
+  "description": "LightDrops v3 - Multi-Agent Triangular Arbitrage System",
+  "main": "central.js",
+  "scripts": {
+    "start": "node central.js",
+    "paper": "node central.js --paper",
+    "test": "node central.js --paper --once"
+  },
+  "dependencies": {
+    "axios": "^1.6.0",
+    "dotenv": "^16.0.0",
+    "node-binance-api": "^0.13.0",
+    "ws": "^8.20.1"
+  }
+}
