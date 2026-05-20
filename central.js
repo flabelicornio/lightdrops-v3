@@ -8,7 +8,7 @@ require('dotenv').config();
 const Agent    = require('./agents/agent');
 const Triangle = require('./agents/triangle');
 const Arbitrer = require('./agents/arbitrer');
-const { fetchBinance, fetchTwelveData } = require('./data/feeds');
+const { fetchBinance, fetchTwelveData, fetchDpricebit } = require('./data/feeds');
 const http     = require('http');
 const stateManager = require('./state-manager');
 const { WebSocketServer } = require('ws');
@@ -57,13 +57,13 @@ function broadcast(data) {
 // DEFINIR AGENTES
 // =============================================
 
-const agentOil = new Agent('oil', 'USO',     (sym) => fetchTwelveData(sym, '5min'));
-const agentDXY = new Agent('dxy', 'UUP',     (sym) => fetchTwelveData(sym, '5min'));
-const agentSPY = new Agent('spy', 'SPY',     (sym) => fetchTwelveData(sym, '5min'));
+const agentOil = new Agent('oil', 'USO',     (sym) => fetchDpricebit(sym));
+const agentDXY = new Agent('dxy', 'UUP',     (sym) => fetchDpricebit(sym));
+const agentSPY = new Agent('spy', 'SPY',     (sym) => fetchDpricebit(sym));
 
 const agentBTC = new Agent('btc', 'BTCUSDT', (sym) => fetchBinance(sym, '5m'));
 const agentETH = new Agent('eth', 'ETHUSDT', (sym) => fetchBinance(sym, '5m'));
-const agentQQQ = new Agent('qqq', 'QQQ',     (sym) => fetchTwelveData(sym, '5min'));
+const agentQQQ = new Agent('qqq', 'QQQ',     (sym) => fetchDpricebit(sym));
 
 // =============================================
 // NÚCLEOS TRIANGULARES
