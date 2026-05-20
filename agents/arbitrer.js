@@ -140,6 +140,7 @@ class Arbitrer {
             };
             positions.push(pos);
             this.portfolio.positions.push(pos);
+            this.portfolio.cash -= capitalPerLeg;
         }
 
         this.portfolio.totalTrades++;

@@ -12,7 +12,7 @@ const TD_BASE = 'https://api.twelvedata.com';
 
 // Cache para no exceder rate limits
 const cache    = {};
-const CACHE_TTL = 60000; // 25 segundos
+const CACHE_TTL = 25000; // 25 segundos
 
 function isCached(key) {
     return cache[key] && (Date.now() - cache[key].ts < CACHE_TTL);
@@ -78,14 +78,7 @@ async function fetchCoinGecko(symbol) {
     }
 }
 
-// Alias para compatibilidad con central.js / triangle.js existentes
-// Si el símbolo es crypto → CoinGecko, si no → TwelveData
-async function fetchBinance(symbol) {
-    if (CG_IDS[symbol]) {
-        return fetchCoinGecko(symbol);
-    }
-    return fetchTwelveData(symbol);
-}
+
 
 // --------------------------------------------
 // TWELVE DATA - ETFs (SPY, QQQ, USO, UUP)
@@ -196,11 +189,86 @@ function generateSimulatedData(symbol) {
 }
 
 // --------------------------------------------
+// DPRICEBIT - Fuente universal de precios
+// Reemplaza TwelveData para ETFs, índices, forex
+// Lee del feed-server local (puerto 3000)
+// --------------------------------------------
+async function fetchDpricebit(symbol) {
+    const key = `dpb_${symbol}`;
+    if (isCached(key)) return cache[key].data;
+
+    try {
+        const res  = await axios.get('http://localhost:3000/feed', { timeout: 3000 });
+        const feed = res.data;
+        if (!feed || !feed.ts) return generateSimulatedData(symbol);
+
+        const priceMap = {
+            'SPY':     feed.market?.SPX,
+            'QQQ':     feed.market?.NDX  ? feed.market.NDX  / 38   : null,
+            'USO':     feed.market?.OIL  ? feed.market.OIL  / 1.28 : null,
+            'UUP':     feed.market?.DXY  ? feed.market.DXY  / 3.55 : null,
+            'GOLD':    feed.market?.GOLD,
+            'OIL':     feed.market?.OIL,
+            'DXY':     feed.market?.DXY,
+            'SPX':     feed.market?.SPX,
+            'BTCUSDT': feed.crypto?.bitcoin   || feed.market?.BTC,
+            'ETHUSDT': feed.crypto?.ethereum  || feed.market?.ETH,
+            'BTC':     feed.crypto?.bitcoin   || feed.market?.BTC,
+            'ETH':     feed.crypto?.ethereum  || feed.market?.ETH,
+            'MXNUSD':  feed.fx?.MXN,
+            'COPUSD':  feed.fx?.COP,
+            'EURUSD':  feed.fx?.EUR,
+        };
+
+        const price = priceMap[symbol];
+        if (!price) {
+            console.warn(`  [feeds] dpricebit: símbolo desconocido ${symbol}`);
+            return generateSimulatedData(symbol);
+        }
+
+        // Historial sintético con ruido mínimo alrededor del precio real
+        const vol    = 0.001;
+        const prices = Array.from({length: 50}, (_, i) => {
+            const noise = (Math.random() - 0.5) * vol * price;
+            return price + noise * (i / 50);
+        });
+        prices[prices.length - 1] = price;
+
+        const data = {
+            symbol,
+            source:        'dpricebit',
+            prices,
+            volumes:       prices.map(() => 1000000),
+            highs:         prices.map(p => p * 1.001),
+            lows:          prices.map(p => p * 0.999),
+            current:       price,
+            currentVolume: 1000000,
+            timestamp:     Date.now()
+        };
+
+        cache[key] = { ts: Date.now(), data };
+        console.log(`  [feeds] dpricebit ${symbol}: $${price.toFixed(4)}`);
+        return data;
+
+    } catch(e) {
+        console.warn(`  [feeds] dpricebit error ${symbol}:`, e.message);
+        return generateSimulatedData(symbol);
+    }
+}
+
+// Alias universal — crypto→CoinGecko, resto→dpricebit
+async function fetchBinance(symbol) {
+    if (CG_IDS[symbol]) return fetchCoinGecko(symbol);
+    return fetchDpricebit(symbol);
+}
+
+// --------------------------------------------
 // EXPORTS
 // --------------------------------------------
 module.exports = {
-    fetchBinance,       // alias: crypto→CoinGecko, resto→TwelveData
-    fetchCoinGecko,     // directo CoinGecko
-    fetchTwelveData,    // directo TwelveData
+    fetchBinance,
+    fetchCoinGecko,
+    fetchTwelveData,
+    fetchDpricebit,
     generateSimulatedData
 };
