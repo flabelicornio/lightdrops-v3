@@ -6,17 +6,23 @@
 // =============================================
 
 require('dotenv').config();
-const { fetchBinance, fetchTwelveData, fetchCoinGecko } = require('./data/feeds');
+const { fetchBinance, fetchDpricebit } = require('./data/feeds');
+const executor = require('./agents/binance-executor');
+const WebSocket = require('ws');
 
 // ── CONFIGURACIÓN DE LA COLONIA ──
+// Feeds unificados: crypto→Binance/CoinGecko, ETFs→dpricebit (feed-server local)
 const ASSETS = [
-    { id: 'btc',  symbol: 'BTCUSDT', fetch: (s) => fetchCoinGecko(s),          type: 'crypto' },
-    { id: 'eth',  symbol: 'ETHUSDT', fetch: (s) => fetchCoinGecko(s),          type: 'crypto' },
-    { id: 'spy',  symbol: 'SPY',     fetch: (s) => fetchTwelveData(s, '5min'), type: 'etf'    },
-    { id: 'qqq',  symbol: 'QQQ',     fetch: (s) => fetchTwelveData(s, '5min'), type: 'etf'    },
-    { id: 'uso',  symbol: 'USO',     fetch: (s) => fetchTwelveData(s, '5min'), type: 'etf'    },
-    { id: 'uup',  symbol: 'UUP',     fetch: (s) => fetchTwelveData(s, '5min'), type: 'etf'    },
+    { id: 'btc',  symbol: 'BTCUSDT', fetch: (s) => fetchBinance(s),    type: 'crypto' },
+    { id: 'eth',  symbol: 'ETHUSDT', fetch: (s) => fetchBinance(s),    type: 'crypto' },
+    { id: 'spy',  symbol: 'SPY',     fetch: (s) => fetchDpricebit(s),  type: 'etf'    },
+    { id: 'qqq',  symbol: 'QQQ',     fetch: (s) => fetchDpricebit(s),  type: 'etf'    },
+    { id: 'uso',  symbol: 'USO',     fetch: (s) => fetchDpricebit(s),  type: 'etf'    },
+    { id: 'uup',  symbol: 'UUP',     fetch: (s) => fetchDpricebit(s),  type: 'etf'    },
 ];
+
+// Stop loss: % máximo de pérdida antes de cerrar forzado
+const STOP_LOSS_PCT = parseFloat(process.env.STOP_LOSS_PCT || '3');
 
 // ── HORMIGA (MomentumAgent) ──
 class MomentumAgent {
@@ -294,11 +300,38 @@ if (require.main === module) {
         process.env.PAPER_MODE !== 'false'
     );
 
+    // WebSocket cliente para publicar datos de momentum al orquestador central
+    const WS_URL = process.env.MOMENTUM_WS_URL || `ws://localhost:${process.env.WS_PORT || 8080}`;
+    let ws;
+    function connectWs() {
+        ws = new WebSocket(WS_URL);
+        ws.on('open', () => console.log(`  [momentum-ws] conectado a ${WS_URL}`));
+        ws.on('close', () => {
+            console.log('  [momentum-ws] desconectado — reintentando en 3s');
+            setTimeout(connectWs, 3000);
+        });
+        ws.on('error', (e) => { /* silenciar, reconexión en close */ });
+    }
+
+    connectWs();
+
     async function run() {
-        await colony.tick();
+        // Primer tick inmediato
+        try {
+            const res = await colony.tick();
+            if (res && ws && ws.readyState === WebSocket.OPEN) {
+                ws.send(JSON.stringify({ type: 'momentum', payload: res }));
+            }
+        } catch (e) { console.error('Error en ciclo:', e.message); }
+
+        // Ciclos periódicos
         setInterval(async () => {
-            try { await colony.tick(); }
-            catch(e) { console.error('Error en ciclo:', e.message); }
+            try {
+                const result = await colony.tick();
+                if (result && ws && ws.readyState === WebSocket.OPEN) {
+                    ws.send(JSON.stringify({ type: 'momentum', payload: result }));
+                }
+            } catch(e) { console.error('Error en ciclo:', e.message); }
         }, CYCLE);
     }
 

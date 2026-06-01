@@ -11,6 +11,7 @@ const Arbitrer = require('./agents/arbitrer');
 const { fetchBinance, fetchTwelveData, fetchDpricebit } = require('./data/feeds');
 const http     = require('http');
 const stateManager = require('./state-manager');
+const momentumStore = require('./momentum-store');
 const { WebSocketServer } = require('ws');
 
 const PAPER_MODE       = process.env.PAPER_MODE !== 'false';
@@ -33,6 +34,18 @@ wss.on('connection', (ws) => {
     console.log(`  [ws] Cliente conectado (total: ${clients.size})`);
     // Enviar último estado si existe
     if (lastState) ws.send(JSON.stringify(lastState));
+    // Recibir datos entrantes (p.ej. momentum-flow.js) y actualizar estado
+    ws.on('message', (msg) => {
+        try {
+            const data = JSON.parse(msg.toString());
+            if (data && data.type === 'momentum' && data.payload) {
+                lastMomentum = data.payload;
+                try { momentumStore.setLastMomentum(data.payload); } catch (e) { /* ignore */ }
+                // Propagar inmediatamente a todos los clientes
+                try { broadcast(collectState(null)); } catch (e) { /* no crítico */ }
+            }
+        } catch (e) { /* mensaje no JSON */ }
+    });
     ws.on('close', () => {
         clients.delete(ws);
         console.log(`  [ws] Cliente desconectado (total: ${clients.size})`);
@@ -42,7 +55,8 @@ wss.on('connection', (ws) => {
 server.listen(WS_PORT, () => {
     console.log(`  [ws] WebSocket escuchando en puerto ${WS_PORT}`);
 });
-
+ 
+let lastMomentum = null;
 let lastState = null;
 
 function broadcast(data) {
@@ -117,6 +131,15 @@ function collectState(signal) {
             buildNucleo(nucleoCrypto, [agentBTC, agentETH, agentQQQ]),
         ],
         signal: signal || null,
+        // Resumen triangular y métricas de cartera relacionadas con el arb triangular
+        triangular: {
+            zscore: (arbitrer.triangles && arbitrer.triangles.length) ? (arbitrer.triangles.reduce((best, t) => Math.abs(t.zscore || 0) > Math.abs(best.zscore || 0) ? t : best, { zscore: 0 }).zscore || 0) : 0,
+            pnl:    arbitrer.portfolio?.pnl || 0,
+            cash:   arbitrer.portfolio?.cash || CAPITAL,
+            totalTrades: arbitrer.portfolio?.totalTrades || 0,
+        },
+        // Datos de momentum recibidos externamente
+        momentum: lastMomentum || null,
     };
 }
 

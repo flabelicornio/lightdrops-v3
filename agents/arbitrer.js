@@ -6,12 +6,16 @@
 
 const fs = require('fs');
 const path = require('path');
+const momentumStore = require('../momentum-store');
+const Chain = require('./chain');
 
 class Arbitrer {
     constructor(capital = 100, paperMode = true) {
         this.capital = capital;
         this.paperMode = paperMode;
         this.triangles = [];
+        this.chain = new Chain();
+        this.pendingSignals = []; // señales en superposición
 
         // Cartera simulada
         this.portfolio = {
@@ -62,19 +66,55 @@ class Arbitrer {
         }
 
         this.closePositionsIfConverged(reports);
-        // Seleccionar la señal más fuerte entre todos los núcleos
-        const best = reports
+
+        // --- Procesar señales pendientes (superposición)
+        if (this.pendingSignals.length > 0) {
+            const stillPending = [];
+            for (const p of this.pendingSignals) {
+                const confirmed = this.confirmByMomentum(p.report);
+                if (confirmed) {
+                    console.log(`\n  🔬 Señal pendiente confirmada: ${p.report.name} — colapsando`);
+                    this.executeSignal(p.report);
+                } else {
+                    p.attempts = (p.attempts || 0) + 1;
+                    if (p.attempts < 4) stillPending.push(p);
+                    else console.log(`  ✗ Señal pendiente expirada: ${p.report.name}`);
+                }
+            }
+            this.pendingSignals = stillPending;
+        }
+
+        // Filtrar por pasa-cadena (chain) antes de considerar ejecución
+        const candidates = reports
             .filter(r => r.signal !== null)
-            .sort((a, b) => b.strength - a.strength)[0];
+            .filter(r => {
+                const res = this.chain.evaluate(r);
+                if (!res.ok) console.log(`  (chain) Rechazado ${r.name}: ${res.reason}`);
+                return res.ok;
+            });
+
+        // Seleccionar la señal más fuerte entre candidatos
+        const best = candidates.sort((a, b) => b.strength - a.strength)[0];
 
         if (best) {
             console.log('\n' + '─'.repeat(55));
             console.log(`  🎯 SEÑAL SELECCIONADA: Núcleo ${best.name}`);
             console.log(`  ${best.signal.description}`);
             console.log(`  Z-Score: ${best.zscore.toFixed(3)} | Fuerza: ${best.strength}%`);
-            this.executeSignal(best);
+
+            // Oráculo de Schrödinger: comprobar momentum antes de colapsar
+            const confirmed = this.confirmByMomentum(best);
+            if (confirmed) {
+                this.executeSignal(best);
+                return best;
+            } else {
+                console.log('  🫧 Señal en superposición — esperando confirmación de momentum');
+                this.pendingSignals.push({ report: best, ts: Date.now(), attempts: 0 });
+                return null;
+            }
         } else {
             console.log('\n  ⏸  Sin señal en este ciclo — mercado en equilibrio');
+            return null;
         }
 
         this.printPortfolio();
@@ -150,6 +190,37 @@ class Arbitrer {
         positions.forEach(p => {
             console.log(`     ${p.direction.padEnd(5)} ${p.symbol.padEnd(10)} @ $${p.entryPrice?.toFixed(2)} | $${p.capitalUSD.toFixed(2)}`);
         });
+    }
+
+    // --------------------------------------------
+    // ORÁCULO DE SCHRÖDINGER: confirmar por momentum
+    // Requiere que el momentum promedio de las posiciones LONG sea positivo
+    // --------------------------------------------
+    confirmByMomentum(report) {
+        try {
+            const store = momentumStore.getLastMomentum();
+            if (!store || !store.payload || !store.payload.snapshots) return false;
+            const momentumSnaps = store.payload.snapshots;
+
+            // Mapear símbolos largos del reporte
+            const longSymbols = (report.signal?.long || []).map(id => {
+                const a = report.agents.find(x => x.id === id);
+                return a ? a.symbol : null;
+            }).filter(Boolean);
+
+            if (longSymbols.length === 0) return false;
+
+            // Buscar momentum en snapshots por símbolo
+            const moments = longSymbols.map(sym => {
+                const s = momentumSnaps.find(ms => (ms.symbol || ms.symbol?.toUpperCase()) === (sym || '').toUpperCase());
+                return s ? (s.momentum || 0) : 0;
+            });
+
+            const avg = moments.reduce((a, b) => a + b, 0) / moments.length;
+            return avg > 0;
+        } catch (e) {
+            return false;
+        }
     }
 
     // Cerrar posiciones abiertas cuando el z-score regresa a 0
