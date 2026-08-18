@@ -1,7 +1,7 @@
 // =============================================
-// LIGHTDROPS v3 - Data Feeds v2
+// LIGHTDROPS v3 - Data Feeds v3 (FIXED)
 // CoinGecko (crypto) + TwelveData (ETFs)
-// FIX: Binance → CoinGecko, USOIL→USO, DXY→UUP, SPY adjust
+// Mejor detección de simulación y errores
 // =============================================
 
 require('dotenv').config();
@@ -10,23 +10,22 @@ const axios = require('axios');
 const TD_KEY  = process.env.TWELVE_DATA_KEY || '';
 const TD_BASE = 'https://api.twelvedata.com';
 
-// Cache para no exceder rate limits
-const cache    = {};
-const CACHE_TTL = 60000; // 25 segundos
+// Cache (45 segundos)
+const cache = {};
+const CACHE_TTL = 45000;
 
 function isCached(key) {
     return cache[key] && (Date.now() - cache[key].ts < CACHE_TTL);
 }
 
 // --------------------------------------------
-// COINGECKO - Crypto (gratis, sin restricciones)
-// Reemplaza Binance que bloquea IPs de GCloud
+// COINGECKO - Crypto
 // --------------------------------------------
 const CG_IDS = {
     'BTCUSDT': 'bitcoin',
-    'ETHUSDT':  'ethereum',
-    'BTC':      'bitcoin',
-    'ETH':      'ethereum',
+    'ETHUSDT': 'ethereum',
+    'BTC':     'bitcoin',
+    'ETH':     'ethereum',
 };
 
 async function fetchCoinGecko(symbol) {
@@ -35,18 +34,16 @@ async function fetchCoinGecko(symbol) {
 
     const cgId = CG_IDS[symbol];
     if (!cgId) {
-        console.warn(`  [feeds] CoinGecko: símbolo desconocido ${symbol}, usando simulación`);
+        console.warn(`  [feeds] CoinGecko: símbolo desconocido ${symbol} → simulación`);
         return generateSimulatedData(symbol);
     }
 
     try {
-        // Datos horarios últimas 48h → ~48 puntos suficientes para RSI/MA
-        const url = `https://api.coingecko.com/api/v3/coins/${cgId}/market_chart` +
-                    `?vs_currency=usd&days=2&interval=hourly`;
+        const url = `https://api.coingecko.com/api/v3/coins/${cgId}/market_chart?vs_currency=usd&days=2&interval=hourly`;
         const res = await axios.get(url, { timeout: 10000 });
 
         if (!res.data || !res.data.prices || res.data.prices.length < 20) {
-            console.warn(`  [feeds] CoinGecko: datos insuficientes para ${symbol}`);
+            console.warn(`  [feeds] CoinGecko: datos insuficientes para ${symbol} → simulación`);
             return generateSimulatedData(symbol);
         }
 
@@ -78,8 +75,7 @@ async function fetchCoinGecko(symbol) {
     }
 }
 
-// Alias para compatibilidad con central.js / triangle.js existentes
-// Si el símbolo es crypto → CoinGecko, si no → TwelveData
+// Alias para compatibilidad
 async function fetchBinance(symbol) {
     if (CG_IDS[symbol]) {
         return fetchCoinGecko(symbol);
@@ -88,41 +84,32 @@ async function fetchBinance(symbol) {
 }
 
 // --------------------------------------------
-// TWELVE DATA - ETFs (SPY, QQQ, USO, UUP)
-// USO  = ETF de petróleo WTI (reemplaza USOIL)
-// UUP  = ETF del dólar DXY  (reemplaza DXY)
-// SPY  → &adjust=true para precio ajustado real
+// TWELVE DATA - ETFs
 // --------------------------------------------
 async function fetchTwelveData(symbol, interval = '5min', outputsize = 50) {
     const key = `td_${symbol}_${interval}`;
     if (isCached(key)) return cache[key].data;
 
     if (!TD_KEY || TD_KEY === 'TU_KEY_AQUI') {
+        console.warn(`  [feeds] Sin API key de TwelveData → simulación para ${symbol}`);
         return generateSimulatedData(symbol);
     }
 
     try {
-        // adjust=true → precio ajustado por splits/dividendos (fix SPY $737→~$520)
-        const url = `${TD_BASE}/time_series` +
-                    `?symbol=${symbol}` +
-                    `&interval=${interval}` +
-                    `&outputsize=${outputsize}` +
-                    `&adjust=true` +
-                    `&apikey=${TD_KEY}`;
-
+        const url = `${TD_BASE}/time_series?symbol=${symbol}&interval=${interval}&outputsize=${outputsize}&adjust=true&apikey=${TD_KEY}`;
         const res = await axios.get(url, { timeout: 8000 });
 
         if (!res.data || res.data.status === 'error') {
-            console.warn(`  [feeds] TwelveData: error para ${symbol} (${res.data?.message || 'desconocido'}), usando simulación`);
+            console.warn(`  [feeds] TwelveData error ${symbol}: ${res.data?.message || 'desconocido'} → simulación`);
             return generateSimulatedData(symbol);
         }
 
         if (!res.data.values || res.data.values.length < 20) {
-            console.warn(`  [feeds] TwelveData: sin datos para ${symbol}, usando simulación`);
+            console.warn(`  [feeds] TwelveData: pocos datos para ${symbol} → simulación`);
             return generateSimulatedData(symbol);
         }
 
-        const values = res.data.values.reverse(); // cronológico
+        const values = res.data.values.reverse();
         const data = {
             symbol,
             source:        'twelvedata',
@@ -146,18 +133,17 @@ async function fetchTwelveData(symbol, interval = '5min', outputsize = 50) {
 }
 
 // --------------------------------------------
-// SIMULACIÓN REALISTA - fallback
-// Bases actualizadas: USO/UUP en lugar de USOIL/DXY
+// SIMULACIÓN (fallback)
 // --------------------------------------------
 const simBases = {
-    'SPY':     { base: 520,   vol: 0.0008, volume: 80000000  },
-    'QQQ':     { base: 440,   vol: 0.001,  volume: 50000000  },
-    'USO':     { base: 78,    vol: 0.0015, volume: 8000000   }, // oil ETF
-    'UUP':     { base: 28,    vol: 0.0005, volume: 3000000   }, // dollar ETF
-    'BTCUSDT': { base: 95000, vol: 0.002,  volume: 25000     },
-    'ETHUSDT': { base: 1800,  vol: 0.0025, volume: 150000    },
-    'BTC':     { base: 95000, vol: 0.002,  volume: 25000     },
-    'ETH':     { base: 1800,  vol: 0.0025, volume: 150000    },
+    'SPY':     { base: 520,   vol: 0.0008, volume: 80000000 },
+    'QQQ':     { base: 440,   vol: 0.001,  volume: 50000000 },
+    'USO':     { base: 78,    vol: 0.0015, volume: 8000000  },
+    'UUP':     { base: 28,    vol: 0.0005, volume: 3000000  },
+    'BTCUSDT': { base: 95000, vol: 0.002,  volume: 25000    },
+    'ETHUSDT': { base: 1800,  vol: 0.0025, volume: 150000   },
+    'BTC':     { base: 95000, vol: 0.002,  volume: 25000    },
+    'ETH':     { base: 1800,  vol: 0.0025, volume: 150000   },
 };
 
 const simState = {};
@@ -182,6 +168,8 @@ function generateSimulatedData(symbol) {
 
     simState[symbol] = price;
 
+    console.log(`  [feeds] ⚠ SIMULACIÓN ${symbol}: $${price.toFixed(4)}`);
+
     return {
         symbol,
         source:        'simulation',
@@ -195,12 +183,9 @@ function generateSimulatedData(symbol) {
     };
 }
 
-// --------------------------------------------
-// EXPORTS
-// --------------------------------------------
 module.exports = {
-    fetchBinance,       // alias: crypto→CoinGecko, resto→TwelveData
-    fetchCoinGecko,     // directo CoinGecko
-    fetchTwelveData,    // directo TwelveData
+    fetchBinance,
+    fetchCoinGecko,
+    fetchTwelveData,
     generateSimulatedData
 };
